@@ -90,11 +90,15 @@ function ensureAndSortRecords(records) {
 app.get('/api/projects', async (req, res) => {
   try {
     const projects = await loadProjects();
-    // Ensure all records have id and are sorted
-    projects.forEach(project => {
-      project.records = ensureAndSortRecords(project.records);
-    });
-    res.json(projects);
+    // Return only name, details, createdAt, updatedAt for each project
+    const minimalProjects = projects.map(project => ({
+      id: project.id,
+      name: project.name,
+      details: project.details,
+      createdAt: project.createdAt,
+      updatedAt: project.updatedAt
+    }));
+    res.json(minimalProjects);
   } catch (error) {
     console.error('Error in GET /api/projects:', error);
     res.status(500).json({ error: 'Failed to load projects', details: error.message });
