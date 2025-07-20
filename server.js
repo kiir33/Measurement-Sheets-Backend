@@ -3,6 +3,7 @@ const cors = require('cors');
 const fs = require('fs').promises;
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
+const { log } = require('console');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -50,13 +51,37 @@ async function saveProjects(projects) {
 // Utility to assign IDs to records if missing and sort them by id
 function ensureAndSortRecords(records) {
   if (!Array.isArray(records)) return [];
-  return records.map(record => {
+  // First, assign ids and process subRecords
+  const processed = records.map(record => {
     if (!record.id) {
       record.id = uuidv4();
     }
-    // Optionally, you can also assign ids to subRecords here if needed
+    // Ensure sn is an integer if present
+    if (record.sn !== undefined) {
+      record.sn = parseInt(record.sn, 10);
+    }
+    // Recursively process subRecords if present
+    if (Array.isArray(record.subRecords)) {
+      record.subRecords = record.subRecords.map(subRecord => {
+        if (!subRecord.id) {
+          subRecord.id = uuidv4();
+        }
+        if (subRecord.sn !== undefined) {
+          subRecord.sn = parseInt(subRecord.sn, 10);
+        }
+        // Recursively process deeper subRecords if needed
+        if (Array.isArray(subRecord.subRecords)) {
+          subRecord.subRecords = ensureAndSortRecords(subRecord.subRecords);
+        }
+        return subRecord;
+      });
+      // Now sort subRecords by id
+      record.subRecords = record.subRecords.sort((a, b) => String(a.id).localeCompare(String(b.id)));
+    }
     return record;
-  }).sort((a, b) => a.id.localeCompare(b.id));
+  });
+  // Now sort records by id
+  return processed.sort((a, b) => String(a.id).localeCompare(String(b.id)));
 }
 
 // API Routes
@@ -71,7 +96,8 @@ app.get('/api/projects', async (req, res) => {
     });
     res.json(projects);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to load projects' });
+    console.error('Error in GET /api/projects:', error);
+    res.status(500).json({ error: 'Failed to load projects', details: error.message });
   }
 });
 
@@ -89,7 +115,8 @@ app.get('/api/projects/:id', async (req, res) => {
     project.records = ensureAndSortRecords(project.records);
     res.json(project);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to load project' });
+    console.error('Error in GET /api/projects/:id:', error);
+    res.status(500).json({ error: 'Failed to load project', details: error.message });
   }
 });
 
@@ -119,7 +146,8 @@ app.post('/api/projects', async (req, res) => {
     
     res.status(201).json(newProject);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to create project' });
+    console.error('Error in POST /api/projects:', error);
+    res.status(500).json({ error: 'Failed to create project', details: error.message });
   }
 });
 
@@ -146,7 +174,8 @@ app.put('/api/projects/:id', async (req, res) => {
     await saveProjects(projects);
     res.json(projects[projectIndex]);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to update project' });
+    console.error('Error in PUT /api/projects/:id:', error);
+    res.status(500).json({ error: 'Failed to update project', details: error.message });
   }
 });
 
@@ -163,7 +192,8 @@ app.delete('/api/projects/:id', async (req, res) => {
     await saveProjects(filteredProjects);
     res.json({ message: 'Project deleted successfully' });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to delete project' });
+    console.error('Error in DELETE /api/projects/:id:', error);
+    res.status(500).json({ error: 'Failed to delete project', details: error.message });
   }
 });
 
@@ -189,7 +219,8 @@ app.post('/api/projects/:id/save', async (req, res) => {
     await saveProjects(projects);
     res.json(projects[projectIndex]);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to save project data' });
+    console.error('Error in POST /api/projects/:id/save:', error);
+    res.status(500).json({ error: 'Failed to save project data', details: error.message });
   }
 });
 
