@@ -6,7 +6,7 @@ const { v4: uuidv4 } = require('uuid');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const DATA_FILE = 'data/projects.json';
+const DATA_FILE = path.join(__dirname, 'data', 'projects.json');
 
 // Middleware
 app.use(cors());
@@ -193,11 +193,15 @@ app.post('/api/projects/:id/save', async (req, res) => {
   }
 });
 
+app.get('/', (req, res) => {
+  res.send('API is running!');
+});
+
 // Start server
 async function startServer() {
   await ensureDataDir();
   
-  app.listen(PORT, () => {
+  app.listen(PORT, '0.0.0.0', () => {
     console.log(`API Server running on http://localhost:${PORT}`);
     console.log(`API available at http://localhost:${PORT}/api`);
   });
